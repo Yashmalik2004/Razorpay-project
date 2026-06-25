@@ -1,3 +1,9 @@
+//  1. Install Prisma
+//    npm install prisma --save-dev
+//    npm install @prisma/client
+//  2. Initialize Prisma
+//    npx prisma init --datasource-provider postgresql
+
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
@@ -8,6 +14,7 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 
