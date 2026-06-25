@@ -1,0 +1,155 @@
+==================================================
+STEP: 1
+DATE: 2026-06-24
+OBJECTIVE: Initialize Phase 0 Project Skeleton (folder structure, configurations, packages, README, database connection template, and prompt logs)
+PROMPT: i have uploaded one assignment in it and i want that we build it together
+# Razorpay Reimbursement Management Assignment - MVP First Development Prompt
+... (Phase 0: Project Skeleton)
+==================================================
+
+==================================================
+STEP: 2
+DATE: 2026-06-24
+OBJECTIVE: Phase 1 - Database Foundation + Full Project Skeleton Scaffolding
+PROMPT: start with implementation plan / continue
+ACTIONS:
+  - Write full prisma/schema.prisma (4 models: User, EmployeeManager, Reimbursement, ReimbursementApproval; 3 enums: Role, ReimbursementStatus, ApprovalDecision)
+  - Created prisma/seed.js to upsert root CFO account (cfo@org.com)
+  - Scaffolded all stub files:
+      src/middlewares/ (3 files)
+      src/dtos/ (6 files)
+      src/controllers/ (11 files)
+      src/services/ (11 files)
+      src/repositories/ (4 files)
+  - Ran `npx prisma generate` — schema validated successfully
+==================================================
+
+==================================================
+STEP: 3
+DATE: 2026-06-24
+OBJECTIVE: Phase 2 - Authentication Module (register, login, logout)
+PROMPT: go with implementation plan
+ACTIONS:
+  - Implemented register-user.dto.js (name, email, password validation)
+  - Implemented login-user.dto.js (email, password validation)
+  - Implemented user.repository.js (findByEmail, findById, createUser, updateRole, findAll, findAllByRole)
+  - Implemented register-user.service.js (uniqueness check, bcrypt hash, forced EMP role)
+  - Implemented login-user.service.js (bcrypt compare, JWT sign, generic error to prevent enumeration)
+  - Implemented logout-user.service.js (intentional no-op — stateless JWT)
+  - Implemented authenticate.middleware.js (reads httpOnly cookie, jwt.verify, attaches req.user)
+  - Implemented error-handler.middleware.js (reads err.statusCode, dev logging)
+  - Implemented register-user.controller.js
+  - Implemented login-user.controller.js (httpOnly cookie set, JWT never in body)
+  - Implemented logout-user.controller.js (clearCookie)
+  - Created src/routes/onboarding.routes.js (POST /register, /login public; /logout protected)
+  - Updated src/app.js (mount /rest/onboardings, 404 handler, global error handler)
+  - Server boot verified: port 7002 ✅
+==================================================
+==================================================
+STEP: 4
+DATE: 2026-06-24
+OBJECTIVE: Phase 3 - Role Management (POST /rest/roles/assign)
+PROMPT: continue
+ACTIONS:
+  - Implemented authorize-role.middleware.js (RBAC guard restricting route access by role)
+  - Implemented assign-role.dto.js (validates target userId and role being EMP, RM, or APE)
+  - Implemented updateRole in user.repository.js (Prisma updates role field, returning user info without password hash)
+  - Implemented assign-role.service.js (business rules checking user existence, preventing CFO role assignment, and preventing self-demotion)
+  - Implemented assign-role.controller.js (validates request body, calls service, returns updated user details)
+  - Created src/routes/role.routes.js (POST /assign route with authenticate and authorizeRole('CFO') middleware)
+  - Updated src/app.js (mount /rest/roles)
+  - Verified endpoints via automated script covering all success and error scenarios (invalid input, unauthorized, invalid role, self-demotion, nonexistent user ID) ✅
+==================================================
+
+==================================================
+STEP: 5
+DATE: 2026-06-24
+OBJECTIVE: Phase 4 - Employee-Manager Assignment (POST/DELETE/GET /rest/employees)
+PROMPT: show me phase 4 implementation
+ACTIONS:
+  - Implemented assign-employee.dto.js (validates presence of employeeId and managerId)
+  - Implemented employee-manager.repository.js (Prisma operations for findByEmployeeId, findByManagerId, create/upsert, deleteByEmployeeId)
+  - Implemented assign-employee-manager.service.js (verifies employee is EMP, manager is RM, upserts relationship)
+  - Implemented remove-employee-manager.service.js (verifies relationship exists, deletes relationship)
+  - Implemented get-employees.service.js (implements role-based visibility: CFO sees all, APE sees EMP/RM, RM sees direct reports; transforms id to userId)
+  - Implemented assign, remove, and get controllers
+  - Created src/routes/employee.routes.js (POST/DELETE /assign CFO only, GET / RM/APE/CFO only)
+  - Updated src/app.js (mount /rest/employees)
+  - Verified endpoints via automated script covering all role permission blocks, valid assignments, invalid role combinations, visibility filtering, and deletion ✅
+==================================================
+
+==================================================
+STEP: 6
+DATE: 2026-06-24
+OBJECTIVE: Phases 5, 6, & 7 - Reimbursement Creation, Approvals, & Visibility
+PROMPT: go for ut
+ACTIONS:
+  - Implemented create-reimbursement.dto.js (validates title, description, amount)
+  - Implemented update-reimbursement.dto.js (validates decision being APPROVED or REJECTED)
+  - Implemented findById, create, updateStatus, findByEmployeeId, findByEmployeeIds, and findAll in reimbursement.repository.js
+  - Implemented findByReimbursementId and findByReimbursementAndApprover in reimbursement-approval.repository.js
+  - Implemented create-reimbursement.service.js (registers new pending requests)
+  - Implemented approve-reimbursement.service.js (enforces duplicate limits, RM subordinate check, transitions to APPROVED on CFO vote or RM + APE vote combination)
+  - Implemented reject-reimbursement.service.js (enforces RM subordinate check, transitions to REJECTED immediately)
+  - Implemented get-reimbursements.service.js (implements strict linear role visibility: EMP sees own, RM sees pending subordinate, APE sees RM-approved pending, CFO sees APE-approved; subordinate filter history checks)
+  - Created create, approve, reject, and get controllers
+  - Created src/routes/reimbursement.routes.js (POST /, PATCH /:id, GET /, GET /:userId)
+  - Updated src/app.js (mount /rest/reimbursements)
+  - Verified endpoints via automated script covering request raising, lists visibility, approvals cascade, rejection immediate state changes, and RM-EMP boundary checks ✅
+==================================================
+
+==================================================
+STEP: 7
+DATE: 2026-06-24
+OBJECTIVE: API Compliance Fixes - Aligning all endpoints to the exact PDF specification
+PROMPT: does all process aur phases completed? / do it
+ACTIONS:
+  - Updated register-user.dto.js: Added @org.com domain enforcement (email must end with @org.com)
+  - Updated login-user.dto.js: Added @org.com domain enforcement
+  - Updated update-reimbursement.dto.js: Now accepts both `status` (PDF spec) and `decision` (internal); returns normalized { errors, decision }
+  - Updated reimbursement.routes.js: Added PATCH / (no :id) handler alongside existing PATCH /:id; supports { userId, status } body from PDF spec
+  - Updated assign-employee.dto.js: Accepts both `employeeId` (internal) and `userId` (PDF spec) as the employee identifier; returns normalized { errors, employeeId, managerId }
+  - Updated assign-employee-manager.controller.js: Uses DTO-normalized employeeId/managerId
+  - Updated remove-employee-manager.controller.js: Uses DTO-normalized employeeId/managerId
+  - Ran full smoke test — all 10 tests passed (health, CFO login, register, bad domain rejection, GET employees, RM registration, role assign, employee assign with userId/managerId, reimbursement creation, PATCH / with status) ✅
+==================================================
+
+==================================================
+STEP: 8
+DATE: 2026-06-24
+OBJECTIVE: Frontend - Full-stack testing dashboard (ReimburseIQ)
+PROMPT: we need frontend too to test all this
+ACTIONS:
+  - Created frontend/index.html (single-file HTML/CSS/JS, ~800 lines)
+  - Premium dark glassmorphic UI with Inter font, purple accent, role-color badges
+  - Auth Screen: Login/Register tabs with @org.com domain hint and CFO credentials hint
+  - App Layout: Sidebar navigation (role-gated) + main content sections
+  - Dashboard section: Profile card, role-specific stat cards, Role Guide
+  - Users & Roles section (CFO only): full users table with inline role-change selector
+  - Employees section (RM/APE/CFO): table with assign/remove forms (CFO), role-based visibility
+  - Reimbursements section: create form (EMP), approve/reject buttons (RM/APE/CFO), "view by userId" (RM/CFO)
+  - Copy-to-clipboard on all UUIDs for easy cross-referencing
+  - Toast notifications for all API responses (success/error/info)
+  - Updated src/app.js: added express.static() middleware serving frontend/ at http://localhost:7002/
+  - Verified: GET http://localhost:7002 → 200 text/html serving ReimburseIQ frontend ✅
+==================================================
+
+==================================================
+STEP: 9
+DATE: 2026-06-24
+OBJECTIVE: Production Readiness, Deployability & Testing Block Fixes
+PROMPT: continue / deployement
+ACTIONS:
+  - Reset passwords for alice@org.com and bob@org.com in the database to password123 to unblock logging in.
+  - Patched APE visibility logic in get-reimbursements.service.js to allow pending requests of manager-less employees to directly route to APEs and then CFO for final approval.
+  - Git initialized the workspace root, configured a production-ready .gitignore, and pushed code to GitHub: https://github.com/vansh700/razorpay.git.
+  - Created Dockerfile and docker-compose.yml for production deployment and local PostgreSQL database orchestration.
+  - Added start script in package.json to run Prisma migration deploy steps before starting the Express web server.
+==================================================
+STEP: 10
+DATE: 2026-06-24
+OBJECTIVE: Deployment Plan Documentation
+PROMPT: make a plan how can i deploy it and provide a implementation file
+ACTIONS:
+  - Created a comprehensive DEPLOYMENT.md instruction manual in the repository root for Render, Railway, and Docker deployment configurations.
+==================================================

@@ -1,0 +1,114 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+}
+
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum Role {
+  EMP // Employee - default for self-registration
+  RM  // Reporting Manager
+  APE // Accounts Payable Executive
+  CFO // Chief Financial Officer (root)
+}
+
+enum ReimbursementStatus {
+  PENDING  // Initial state when raised
+  APPROVED // RM approved AND at least one APE approved
+  REJECTED // Any approver rejects
+}
+
+enum ApprovalDecision {
+  APPROVED
+  REJECTED
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MODELS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Stores all users across all roles.
+model User {
+  id           String   @id @default(uuid())
+  name         String   @db.VarChar(100)
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @db.VarChar(255) @map("password_hash")
+  role         Role     @default(EMP)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  /// Reimbursements raised by this user (only when role = EMP)
+  reimbursements       Reimbursement[]       @relation("EmployeeReimbursements")
+
+  /// If this user is an EMP, they can have one manager mapping
+  employeeManagerEntry EmployeeManager?      @relation("EmployeeMapping")
+
+  /// If this user is an RM, they can manage many employees
+  managedEmployees     EmployeeManager[]     @relation("ManagerMapping")
+
+  /// Approvals this user has made
+  approvalsMade        ReimbursementApproval[] @relation("ApproverActions")
+
+  @@map("users")
+}
+
+/// Maps each Employee (EMP) to exactly one Reporting Manager (RM).
+model EmployeeManager {
+  id         String   @id @default(uuid())
+  employeeId String   @unique @map("employee_id")
+  managerId  String   @map("manager_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  employee   User     @relation("EmployeeMapping", fields: [employeeId], references: [id], onDelete: Cascade)
+  manager    User     @relation("ManagerMapping", fields: [managerId], references: [id], onDelete: Cascade)
+
+  @@map("employee_managers")
+}
+
+/// Reimbursement requests raised by employees.
+model Reimbursement {
+  id          String              @id @default(uuid())
+  employeeId  String              @map("employee_id")
+  title       String              @db.VarChar(255)
+  description String              @db.Text
+  amount      Decimal             @db.Decimal(12, 2)
+  status      ReimbursementStatus @default(PENDING)
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  // Relations
+  employee    User                  @relation("EmployeeReimbursements", fields: [employeeId], references: [id], onDelete: Cascade)
+  approvals   ReimbursementApproval[] @relation("ReimbursementApprovals")
+
+  @@map("reimbursements")
+}
+
+/// Tracks individual approval/rejection decisions by RM, APE, or CFO.
+model ReimbursementApproval {
+  id               String           @id @default(uuid())
+  reimbursementId  String           @map("reimbursement_id")
+  approverId       String           @map("approver_id")
+  approverRole     Role             @map("approver_role")
+  decision         ApprovalDecision
+  createdAt        DateTime         @default(now()) @map("created_at")
+
+  // Relations
+  reimbursement    Reimbursement    @relation("ReimbursementApprovals", fields: [reimbursementId], references: [id], onDelete: Cascade)
+  approver         User             @relation("ApproverActions", fields: [approverId], references: [id], onDelete: Cascade)
+
+  @@map("reimbursement_approvals")
+}

@@ -1,0 +1,1082 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ReimburseIQ — Razorpay Internal</title>
+  <meta name="description" content="Role-based reimbursement management system. Powered by Razorpay." />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── Reset ─────────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ─── Tokens ─────────────────────────────────────────────────────────────── */
+    :root {
+      --bg:           #111525;
+      --surface:      #1c2431;
+      --surface-2:    #13181f;
+      --surface-3:    #1a2030;
+      --border:       rgba(255,255,255,0.07);
+      --border-h:     rgba(255,255,255,0.15);
+      --purple:       #7932f3;
+      --purple-l:     #a475f7;
+      --purple-d:     rgba(124,58,237,0.18);
+      --green:        #10b981;
+      --green-d:      rgba(16,185,129,0.18);
+      --red:          #ef4444;
+      --red-d:        rgba(239,68,68,0.18);
+      --yellow:       #f59e0b;
+      --yellow-d:     rgba(245,158,11,0.18);
+      --blue:         #3b82f6;
+      --blue-d:       rgba(59,130,246,0.18);
+      --teal:         #14b8a6;
+      --teal-d:       rgba(20,184,166,0.18);
+      --text:         #e2e8f0;
+      --text-dim:     #94a3b8;
+      --text-muted:   #4a5568;
+      --sidebar-w:    260px;
+    }
+
+    /* ─── Base ───────────────────────────────────────────────────────────────── */
+    html, body { height: 100%; font-family: 'Inter', Arial, Helvetica, sans-serif; background: var(--bg); color: var(--text); overflow: hidden; }
+    input, textarea, select, button { font-family: inherit; }
+    a { color: var(--purple-l); }
+
+    /* ─── Scrollbar ──────────────────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 4px; }
+
+    /* ─────────────────────────────────────────────────────────────────────────
+       AUTH SCREEN
+    ───────────────────────────────────────────────────────────────────────── */
+    #auth-screen {
+      height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(124,58,237,0.14) 0%, transparent 70%),
+                  radial-gradient(ellipse 60% 50% at 80% 100%, rgba(59,130,246,0.08) 0%, transparent 60%),
+                  var(--bg);
+    }
+    .auth-wrap {
+      width: 420px; max-width: 95vw;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 40px;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+    }
+    .auth-logo { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; }
+    .logo-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: linear-gradient(135deg, var(--purple), #4f46e5);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; font-weight: 800; color: #fff; flex-shrink: 0;
+      box-shadow: 0 8px 24px rgba(124,58,237,0.4);
+    }
+    .logo-brand { font-size: 18px; font-weight: 700; }
+    .logo-sub { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+    .auth-tabs { display: flex; background: var(--surface-2); border-radius: 10px; padding: 4px; margin-bottom: 28px; border: 1px solid var(--border); }
+    .auth-tab {
+      flex: 1; padding: 9px; border: none; border-radius: 8px; font-size: 14px; font-weight: 500;
+      background: transparent; color: var(--text-dim); cursor: pointer; transition: all 0.2s;
+    }
+    .auth-tab.active { background: var(--surface-3); color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+    .auth-form { display: flex; flex-direction: column; gap: 18px; }
+    .auth-footer { margin-top: 4px; text-align: center; font-size: 13px; color: var(--text-muted); }
+    .domain-banner {
+      background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3);
+      border-radius: 10px; padding: 10px 14px; font-size: 12.5px; color: #fbbf24;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .domain-banner strong { color: #fcd34d; }
+    .input-suffix-wrap { position: relative; }
+    .input-suffix-wrap input { width: 100%; padding-right: 90px !important; }
+    .suffix-hint {
+      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+      font-size: 11px; color: var(--text-muted); pointer-events: none;
+      font-style: italic;
+    }
+
+    /* ─────────────────────────────────────────────────────────────────────────
+       FORM ELEMENTS
+    ───────────────────────────────────────────────────────────────────────── */
+    .form-group { display: flex; flex-direction: column; gap: 7px; }
+    .form-group label { font-size: 13px; font-weight: 500; color: var(--text-dim); }
+    .form-group input, .form-group textarea, .form-group select {
+      background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 11px 14px; font-size: 14px; color: var(--text); outline: none; transition: border-color 0.2s;
+      resize: vertical;
+    }
+    .form-group input::placeholder, .form-group textarea::placeholder { color: var(--text-muted); }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: var(--purple); }
+    .form-group select option { background: var(--surface-2); }
+    .form-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+    .form-row .form-group { flex: 1; min-width: 180px; }
+
+    /* ─── Buttons ────────────────────────────────────────────────────────────── */
+    .btn {
+      padding: 10px 18px; border-radius: 10px; border: none; font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px;
+      white-space: nowrap; text-decoration: none;
+    }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary { background: linear-gradient(135deg, var(--purple), #4f46e5); color: #fff; }
+    .btn-primary:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(124,58,237,0.35); }
+    .btn-secondary { background: var(--surface-3); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover:not(:disabled) { border-color: var(--border-h); background: var(--surface-2); }
+    .btn-success { background: rgba(16,185,129,0.15); color: var(--green); border: 1px solid rgba(16,185,129,0.3); }
+    .btn-success:hover:not(:disabled) { background: rgba(16,185,129,0.25); }
+    .btn-danger { background: rgba(239,68,68,0.12); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+    .btn-danger:hover:not(:disabled) { background: rgba(239,68,68,0.22); }
+    .btn-sm { padding: 7px 13px; font-size: 12px; border-radius: 8px; }
+    .btn-xs { padding: 4px 9px; font-size: 11px; border-radius: 6px; font-weight: 500; }
+    .btn-full { width: 100%; justify-content: center; padding: 13px; }
+    .btn-ghost { background: transparent; color: var(--text-dim); border: none; padding: 8px; }
+    .btn-ghost:hover { color: var(--text); }
+
+    /* ─────────────────────────────────────────────────────────────────────────
+       APP LAYOUT
+    ───────────────────────────────────────────────────────────────────────── */
+    #app-screen { display: flex; height: 100vh; }
+
+    /* ─── Sidebar ────────────────────────────────────────────────────────────── */
+    #sidebar {
+      width: var(--sidebar-w); flex-shrink: 0;
+      background: var(--surface); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .sb-logo { display: flex; align-items: center; gap: 12px; padding: 20px 18px 16px; border-bottom: 1px solid var(--border); }
+    .sb-logo .logo-brand { font-size: 15px; }
+    .sb-nav { flex: 1; padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px;
+      border: none; background: transparent; color: var(--text-dim); font-size: 13.5px; font-weight: 500;
+      cursor: pointer; transition: all 0.18s; text-align: left; width: 100%;
+    }
+    .nav-item:hover { background: var(--surface-2); color: var(--text); }
+    .nav-item.active { background: var(--purple-d); color: var(--purple-l); }
+    .nav-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+    .nav-sep { height: 1px; background: var(--border); margin: 8px 0; }
+
+    .sb-user { padding: 14px 16px; border-top: 1px solid var(--border); }
+    .sb-user-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .user-avatar {
+      width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+      background: var(--purple-d); color: var(--purple-l); border: 1px solid rgba(124,58,237,0.3);
+      display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700;
+    }
+    .user-info { flex: 1; min-width: 0; }
+    .user-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-email { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* ─── Main Content ───────────────────────────────────────────────────────── */
+    #main-content { flex: 1; overflow-y: auto; background: var(--bg); }
+    .section { padding: 32px; max-width: 1100px; display: none; }
+    .section.active { display: block; }
+    .section-header { margin-bottom: 28px; }
+    .section-header h1 { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+    .section-header p { color: var(--text-dim); font-size: 14px; }
+
+    /* ─── Cards ──────────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+      overflow: hidden; margin-bottom: 20px;
+    }
+    .card-body { padding: 20px 24px; }
+    .card-header {
+      padding: 18px 24px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .card-header h2 { font-size: 15px; font-weight: 600; }
+    .card-header-left { display: flex; align-items: center; gap: 10px; }
+
+    /* ─── Stats Grid ─────────────────────────────────────────────────────────── */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px;
+      display: flex; align-items: flex-start; gap: 14px;
+    }
+    .stat-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+    .stat-body { flex: 1; }
+    .stat-value { font-size: 28px; font-weight: 700; line-height: 1; }
+    .stat-label { font-size: 12px; color: var(--text-dim); margin-top: 5px; font-weight: 500; }
+
+    /* ─── Tables ─────────────────────────────────────────────────────────────── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    thead th {
+      padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600;
+      color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em;
+      border-bottom: 1px solid var(--border); white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(255,255,255,0.02); }
+    tbody td { padding: 13px 16px; vertical-align: middle; }
+    .id-cell { font-family: monospace; font-size: 12px; color: var(--text-dim); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .copy-id { cursor: pointer; color: var(--text-muted); font-size: 11px; margin-left: 4px; }
+    .copy-id:hover { color: var(--purple-l); }
+
+    /* ─── Badges ─────────────────────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 600; white-space: nowrap;
+    }
+    .badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; display: inline-block; }
+    .badge-cfo  { background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); }
+    .badge-cfo::before  { background: #f59e0b; }
+    .badge-rm   { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+    .badge-rm::before   { background: #60a5fa; }
+    .badge-ape  { background: rgba(20,184,166,0.15); color: #2dd4bf; border: 1px solid rgba(20,184,166,0.3); }
+    .badge-ape::before  { background: #2dd4bf; }
+    .badge-emp  { background: rgba(100,116,139,0.2); color: #94a3b8; border: 1px solid rgba(100,116,139,0.3); }
+    .badge-emp::before  { background: #94a3b8; }
+    .badge-pending  { background: var(--yellow-d); color: var(--yellow); border: 1px solid rgba(245,158,11,0.3); }
+    .badge-pending::before  { background: var(--yellow); }
+    .badge-approved { background: var(--green-d); color: var(--green); border: 1px solid rgba(16,185,129,0.3); }
+    .badge-approved::before { background: var(--green); }
+    .badge-rejected { background: var(--red-d); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+    .badge-rejected::before { background: var(--red); }
+
+    /* ─── Role Selector Inline ───────────────────────────────────────────────── */
+    .role-select-wrap { display: flex; align-items: center; gap: 8px; }
+    .role-select-wrap select { background: var(--surface-2); border: 1px solid var(--border); border-radius: 7px; padding: 5px 8px; font-size: 12px; color: var(--text); outline: none; cursor: pointer; }
+    .role-select-wrap select:focus { border-color: var(--purple); }
+
+    /* ─── Empty State ────────────────────────────────────────────────────────── */
+    .empty-state { padding: 48px; text-align: center; color: var(--text-muted); }
+    .empty-state-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.6; }
+    .empty-state p { font-size: 14px; }
+
+    /* ─── Loading spinner ────────────────────────────────────────────────────── */
+    .spinner {
+      width: 20px; height: 20px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.1); border-top-color: var(--purple-l);
+      animation: spin 0.7s linear infinite; display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-row { padding: 40px; text-align: center; color: var(--text-muted); display: flex; align-items: center; justify-content: center; gap: 12px; }
+
+    /* ─── Toast ──────────────────────────────────────────────────────────────── */
+    #toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+    .toast {
+      padding: 14px 18px; border-radius: 12px; font-size: 13.5px; font-weight: 500;
+      display: flex; align-items: center; gap: 10px; pointer-events: auto;
+      animation: slideIn 0.25s ease; min-width: 280px; max-width: 380px;
+      border: 1px solid transparent; backdrop-filter: blur(12px);
+    }
+    .toast-success { background: rgba(16,185,129,0.18); border-color: rgba(16,185,129,0.3); color: #a7f3d0; }
+    .toast-error   { background: rgba(239,68,68,0.18);  border-color: rgba(239,68,68,0.3);  color: #fca5a5; }
+    .toast-info    { background: rgba(124,58,237,0.18); border-color: rgba(124,58,237,0.3); color: #c4b5fd; }
+    .toast-icon { font-size: 16px; flex-shrink: 0; }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes fadeOut { to { opacity: 0; transform: translateX(20px); } }
+
+    /* ─── Profile Card ───────────────────────────────────────────────────────── */
+    .profile-card { padding: 24px; display: flex; align-items: center; gap: 20px; }
+    .profile-avatar { width: 64px; height: 64px; border-radius: 16px; background: var(--purple-d); color: var(--purple-l); border: 2px solid rgba(124,58,237,0.3); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; flex-shrink: 0; }
+    .profile-info h3 { font-size: 18px; font-weight: 700; }
+    .profile-info p { color: var(--text-dim); font-size: 13px; margin-top: 4px; }
+    .profile-info .profile-id { font-family: monospace; font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+    /* ─── Amount ─────────────────────────────────────────────────────────────── */
+    .amount { font-weight: 600; }
+    .amount.positive { color: var(--green); }
+
+    /* ─── Action Cell ────────────────────────────────────────────────────────── */
+    .action-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    /* ─── Info box ───────────────────────────────────────────────────────────── */
+    .info-box { background: var(--purple-d); border: 1px solid rgba(124,58,237,0.25); border-radius: 10px; padding: 12px 16px; font-size: 13px; color: var(--text-dim); margin-bottom: 16px; }
+    .info-box strong { color: var(--purple-l); }
+
+    /* ─── Responsive ─────────────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      :root { --sidebar-w: 0px; }
+      #sidebar { display: none; }
+      .section { padding: 20px 16px; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     AUTH SCREEN
+═══════════════════════════════════════════════════════════════════════════ -->
+<div id="auth-screen">
+  <div class="auth-wrap">
+    <div class="auth-logo">
+      <div class="logo-icon">R</div>
+      <div>
+        <div class="logo-brand">ReimburseIQ</div>
+        <div class="logo-sub">Razorpay Internal Portal</div>
+      </div>
+    </div>
+
+    <div class="auth-tabs" role="tablist">
+      <button class="auth-tab active" id="tab-login" onclick="showAuthTab('login')">Sign In</button>
+      <button class="auth-tab" id="tab-register" onclick="showAuthTab('register')">Register</button>
+    </div>
+
+    <!-- Login Form -->
+    <form id="login-form" class="auth-form" onsubmit="handleLogin(event)">
+      <div class="domain-banner">⚠️ Only <strong>@org.com</strong> emails are accepted by this system</div>
+      <div class="form-group">
+        <label for="login-email">Email address</label>
+        <div class="input-suffix-wrap">
+          <input id="login-email" type="email" placeholder="yourname@org.com" required autocomplete="email" oninput="enforceDomain(this)" />
+          <span class="suffix-hint">@org.com</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="login-password">Password</label>
+        <input id="login-password" type="password" placeholder="••••••••" required autocomplete="current-password" />
+      </div>
+      <button id="login-btn" type="submit" class="btn btn-primary btn-full">Sign In</button>
+      <div class="auth-footer">CFO credentials: <strong>cfo@org.com</strong> / <strong>CFO#ORG@April2026</strong></div>
+    </form>
+
+    <!-- Register Form -->
+    <form id="register-form" class="auth-form" onsubmit="handleRegister(event)" style="display:none">
+      <div class="domain-banner">⚠️ Only <strong>@org.com</strong> emails are accepted by this system</div>
+      <div class="form-group">
+        <label for="reg-name">Full name</label>
+        <input id="reg-name" type="text" placeholder="Jane Doe" required autocomplete="name" />
+      </div>
+      <div class="form-group">
+        <label for="reg-email">Email address</label>
+        <div class="input-suffix-wrap">
+          <input id="reg-email" type="email" placeholder="yourname@org.com" required autocomplete="email" oninput="enforceDomain(this)" />
+          <span class="suffix-hint">@org.com</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="reg-password">Password</label>
+        <input id="reg-password" type="password" placeholder="min. 8 characters" required minlength="8" autocomplete="new-password" />
+      </div>
+      <button id="register-btn" type="submit" class="btn btn-primary btn-full">Create Account</button>
+      <div class="auth-footer">New accounts get the <strong>EMP</strong> role by default.</div>
+    </form>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     APP SCREEN
+═══════════════════════════════════════════════════════════════════════════ -->
+<div id="app-screen" style="display:none">
+
+  <!-- ─── Sidebar ─────────────────────────────────────────────────────────── -->
+  <aside id="sidebar">
+    <div class="sb-logo">
+      <div class="logo-icon" style="width:36px;height:36px;font-size:15px;border-radius:9px;">R</div>
+      <div>
+        <div class="logo-brand">ReimburseIQ</div>
+        <div class="logo-sub">Razorpay Internal</div>
+      </div>
+    </div>
+
+    <nav class="sb-nav" role="navigation">
+      <button class="nav-item" id="nav-dashboard" onclick="navigate('dashboard')">
+        <span class="nav-icon">🏠</span> Dashboard
+      </button>
+      <button class="nav-item" id="nav-users" onclick="navigate('users')" style="display:none">
+        <span class="nav-icon">🎭</span> Users &amp; Roles
+      </button>
+      <button class="nav-item" id="nav-employees" onclick="navigate('employees')" style="display:none">
+        <span class="nav-icon">👥</span> Employees
+      </button>
+      <button class="nav-item" id="nav-reimbursements" onclick="navigate('reimbursements')">
+        <span class="nav-icon">💰</span> Reimbursements
+      </button>
+    </nav>
+
+    <div class="sb-user">
+      <div class="sb-user-row">
+        <div class="user-avatar" id="sb-avatar">--</div>
+        <div class="user-info">
+          <div class="user-name" id="sb-name">--</div>
+          <div class="user-email" id="sb-email">--</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <span id="sb-role-badge" class="badge"></span>
+        <button class="btn btn-sm btn-danger" onclick="handleLogout()">Sign out</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ─── Main Content ─────────────────────────────────────────────────────── -->
+  <main id="main-content" role="main">
+
+    <!-- Dashboard -->
+    <section class="section" id="section-dashboard">
+      <div class="section-header">
+        <h1>Dashboard</h1>
+        <p>Welcome back! Here's what's happening in your workspace.</p>
+      </div>
+      <div class="stats-grid" id="stats-grid"></div>
+      <div class="card">
+        <div class="card-header"><h2>Your Profile</h2></div>
+        <div id="profile-card-body"></div>
+      </div>
+      <div class="card" id="quick-guide-card">
+        <div class="card-header"><h2>📖 Role Guide</h2></div>
+        <div class="card-body" id="quick-guide-body"></div>
+      </div>
+    </section>
+
+    <!-- Users & Roles (CFO only) -->
+    <section class="section" id="section-users">
+      <div class="section-header">
+        <h1>Users &amp; Roles</h1>
+        <p>View all users and manage their organizational roles.</p>
+      </div>
+      <div class="info-box">
+        <strong>CFO-only action:</strong> Use the dropdown in each row to assign a new role. You cannot assign the CFO role or change your own role.
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h2>All Users</h2>
+          <button class="btn btn-sm btn-secondary" onclick="loadUsers()">↻ Refresh</button>
+        </div>
+        <div class="table-wrap" id="users-table-container">
+          <div class="loading-row"><div class="spinner"></div> Loading users…</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Employees -->
+    <section class="section" id="section-employees">
+      <div class="section-header">
+        <h1>Employees</h1>
+        <p id="emp-section-subtitle">View employee–manager assignments.</p>
+      </div>
+      <div class="card" id="assign-form-card" style="display:none">
+        <div class="card-header"><h2>➕ Assign Employee to Manager</h2></div>
+        <div class="card-body">
+          <form id="assign-form" onsubmit="handleAssignEmployee(event)">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Employee User ID <small style="color:var(--text-muted)">(EMP role)</small></label>
+                <input id="a-emp-id" placeholder="Paste employee UUID" required />
+              </div>
+              <div class="form-group">
+                <label>Manager User ID <small style="color:var(--text-muted)">(RM role)</small></label>
+                <input id="a-mgr-id" placeholder="Paste manager UUID" required />
+              </div>
+              <button type="submit" class="btn btn-primary">Assign</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <div class="card" id="remove-form-card" style="display:none">
+        <div class="card-header"><h2>➖ Remove Employee Assignment</h2></div>
+        <div class="card-body">
+          <form id="remove-form" onsubmit="handleRemoveEmployee(event)">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Employee User ID</label>
+                <input id="r-emp-id" placeholder="Paste employee UUID" required />
+              </div>
+              <div class="form-group">
+                <label>Manager User ID</label>
+                <input id="r-mgr-id" placeholder="Paste manager UUID" required />
+              </div>
+              <button type="submit" class="btn btn-danger">Remove</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h2 id="emp-list-title">Team Members</h2>
+          <button class="btn btn-sm btn-secondary" onclick="loadEmployees()">↻ Refresh</button>
+        </div>
+        <div class="table-wrap" id="employees-table-container">
+          <div class="loading-row"><div class="spinner"></div> Loading…</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Reimbursements -->
+    <section class="section" id="section-reimbursements">
+      <div class="section-header">
+        <h1>Reimbursements</h1>
+        <p id="reimb-section-subtitle">Manage expense reimbursement requests.</p>
+      </div>
+      <!-- Create form – EMP only -->
+      <div class="card" id="create-reimb-card" style="display:none">
+        <div class="card-header"><h2>➕ New Reimbursement Request</h2></div>
+        <div class="card-body">
+          <form id="create-reimb-form" onsubmit="handleCreateReimbursement(event)">
+            <div class="form-group" style="margin-bottom:14px">
+              <label>Title</label>
+              <input id="r-title" placeholder="e.g. Team lunch, flight ticket, equipment…" required />
+            </div>
+            <div class="form-group" style="margin-bottom:14px">
+              <label>Description</label>
+              <textarea id="r-desc" rows="3" placeholder="Describe the expense in detail…" required></textarea>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Amount (₹)</label>
+                <input id="r-amount" type="number" min="1" step="0.01" placeholder="0.00" required />
+              </div>
+              <button type="submit" class="btn btn-primary">Submit Request</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <!-- List by userId (RM only) -->
+      <div class="card" id="reimb-by-user-card" style="display:none">
+        <div class="card-header"><h2>🔍 View Employee's Reimbursements</h2></div>
+        <div class="card-body">
+          <form id="reimb-by-user-form" onsubmit="handleViewByUser(event)">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Employee User ID</label>
+                <input id="rbu-user-id" placeholder="Paste employee UUID" required />
+              </div>
+              <button type="submit" class="btn btn-secondary">View All</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <!-- Main list -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-left">
+            <h2 id="reimb-list-title">Reimbursements</h2>
+          </div>
+          <button class="btn btn-sm btn-secondary" onclick="loadReimbursements()">↻ Refresh</button>
+        </div>
+        <div class="table-wrap" id="reimb-table-container">
+          <div class="loading-row"><div class="spinner"></div> Loading…</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ─── Toast Container ──────────────────────────────────────────────────── -->
+<div id="toast-container" role="alert" aria-live="assertive"></div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════════════════════════════════════ -->
+<script>
+/* ─── State ─────────────────────────────────────────────────────────────── */
+let state = {
+  user: null,       // { id, name, email, role }
+  currentView: 'dashboard',
+};
+
+/* ─── Session Restore on Page Load ──────────────────────────────────────── */
+async function restoreSession() {
+  try {
+    const data = await api('GET', '/rest/onboardings/me');
+    if (data.data) {
+      state.user = data.data;
+      enterApp(); // Load the app directly without showing auth screen
+    }
+  } catch (err) {
+    // Session invalid or expired — user stays on signin screen
+    // (auth-screen is already visible by default)
+  }
+}
+
+// Restore session when window fully loads (all functions defined)
+window.addEventListener('load', restoreSession);
+
+/* ─── API Helper ─────────────────────────────────────────────────────────── */
+async function api(method, path, body) {
+  const opts = {
+    method,
+    headers: {},
+    credentials: 'include', // Send cookies and credentials with every request
+  };
+  if (body) {
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  }
+  const res = await fetch(path, opts);
+  let data;
+  try { data = await res.json(); } catch { data = {}; }
+  if (!res.ok) {
+    const msg = data.message || `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  return data;
+}
+
+/* ─── Toast ──────────────────────────────────────────────────────────────── */
+function toast(msg, type = 'success') {
+  const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.innerHTML = `<span class="toast-icon">${icons[type] || '•'}</span><span>${msg}</span>`;
+  const container = document.getElementById('toast-container');
+  container.appendChild(el);
+  setTimeout(() => {
+    el.style.animation = 'fadeOut 0.3s ease forwards';
+    setTimeout(() => el.remove(), 300);
+  }, 3500);
+}
+
+/* ─── Role Badge HTML ────────────────────────────────────────────────────── */
+function roleBadge(role) {
+  const cls = { CFO: 'badge-cfo', RM: 'badge-rm', APE: 'badge-ape', EMP: 'badge-emp' }[role] || 'badge-emp';
+  return `<span class="badge ${cls}">${role}</span>`;
+}
+
+function statusBadge(status) {
+  const cls = { PENDING: 'badge-pending', APPROVED: 'badge-approved', REJECTED: 'badge-rejected' }[status] || '';
+  return `<span class="badge ${cls}">${status}</span>`;
+}
+
+/* ─── Copy to clipboard ──────────────────────────────────────────────────── */
+function copyId(id) {
+  navigator.clipboard.writeText(id).then(() => toast('ID copied to clipboard', 'info'));
+}
+
+/* ─── Auth Tab Toggle ────────────────────────────────────────────────────── */
+function showAuthTab(tab) {
+  document.getElementById('login-form').style.display   = tab === 'login'    ? 'flex' : 'none';
+  document.getElementById('register-form').style.display = tab === 'register' ? 'flex' : 'none';
+  document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+  document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+}
+
+/* ─── Domain enforcement helper ─────────────────────────────────────────── */
+function enforceDomain(input) {
+  // If user pastes something without @org.com, we highlight the suffix hint
+  const val = input.value;
+  const hint = input.parentElement?.querySelector('.suffix-hint');
+  if (!hint) return;
+  if (val && !val.toLowerCase().endsWith('@org.com') && !val.includes('@')) {
+    hint.style.opacity = '1';
+    hint.style.color = '#f59e0b';
+  } else {
+    hint.style.opacity = '0.4';
+    hint.style.color = 'var(--text-muted)';
+  }
+}
+
+/* ─── Auth Handlers ──────────────────────────────────────────────────────── */
+async function handleLogin(e) {
+  e.preventDefault();
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  try {
+    const data = await api('POST', '/rest/onboardings/login', {
+      email: document.getElementById('login-email').value.trim(),
+      password: document.getElementById('login-password').value,
+    });
+    state.user = data.data;
+    toast(`Welcome back, ${state.user.name}!`);
+    enterApp();
+  } catch (err) {
+    toast(err.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Sign In';
+  }
+}
+
+async function handleRegister(e) {
+  e.preventDefault();
+  const btn = document.getElementById('register-btn');
+  btn.disabled = true; btn.textContent = 'Creating account…';
+  try {
+    const data = await api('POST', '/rest/onboardings/register', {
+      name: document.getElementById('reg-name').value.trim(),
+      email: document.getElementById('reg-email').value.trim(),
+      password: document.getElementById('reg-password').value,
+    });
+    toast('Account created! Please sign in.', 'info');
+    showAuthTab('login');
+    document.getElementById('login-email').value = document.getElementById('reg-email').value;
+    document.getElementById('register-form').reset();
+  } catch (err) {
+    toast(err.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Create Account';
+  }
+}
+
+async function handleLogout() {
+  try {
+    await api('POST', '/rest/onboardings/logout');
+  } catch {}
+  state.user = null;
+  document.getElementById('app-screen').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('login-form').reset();
+  toast('Signed out successfully.', 'info');
+}
+
+/* ─── Enter App ──────────────────────────────────────────────────────────── */
+function enterApp() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display  = 'flex';
+  updateSidebar();
+  updateNavVisibility();
+  navigate('dashboard');
+}
+
+function updateSidebar() {
+  const u = state.user;
+  if (!u) return;
+  const initials = u.name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('sb-avatar').textContent = initials;
+  document.getElementById('sb-name').textContent   = u.name;
+  document.getElementById('sb-email').textContent  = u.email;
+  document.getElementById('sb-role-badge').className = `badge badge-${u.role.toLowerCase()}`;
+  document.getElementById('sb-role-badge').textContent = u.role;
+}
+
+function updateNavVisibility() {
+  const role = state.user?.role;
+  // Users & Roles — CFO only
+  document.getElementById('nav-users').style.display = role === 'CFO' ? '' : 'none';
+  // Employees — RM / APE / CFO
+  document.getElementById('nav-employees').style.display = ['RM','APE','CFO'].includes(role) ? '' : 'none';
+}
+
+/* ─── Navigation ─────────────────────────────────────────────────────────── */
+function navigate(view) {
+  state.currentView = view;
+  // Update nav items
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  const navEl = document.getElementById(`nav-${view}`);
+  if (navEl) navEl.classList.add('active');
+  // Show correct section
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById(`section-${view}`)?.classList.add('active');
+  // Load data
+  if (view === 'dashboard')       renderDashboard();
+  if (view === 'users')           loadUsers();
+  if (view === 'employees')       setupEmployees();
+  if (view === 'reimbursements')  setupReimbursements();
+}
+
+/* ─── Dashboard ──────────────────────────────────────────────────────────── */
+function renderDashboard() {
+  const u = state.user;
+  const initials = u.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+
+  // Profile card
+  document.getElementById('profile-card-body').innerHTML = `
+    <div class="profile-card">
+      <div class="profile-avatar">${initials}</div>
+      <div class="profile-info">
+        <h3>${escHtml(u.name)}</h3>
+        <p>${escHtml(u.email)}</p>
+        <div class="profile-id">ID: ${u.id} <span class="copy-id" onclick="copyId('${u.id}')" title="Copy">📋</span></div>
+        <div style="margin-top:10px">${roleBadge(u.role)}</div>
+      </div>
+    </div>`;
+
+  // Stat cards by role
+  const statConfigs = {
+    EMP: [
+      { icon:'📋', label:'Your Role', value:'Employee', color:'var(--surface-3)', iconBg:'rgba(100,116,139,0.2)' },
+      { icon:'💰', label:'Submit Expenses', value:'→', color:'var(--surface-3)', iconBg:'var(--purple-d)', action: () => navigate('reimbursements') },
+    ],
+    RM: [
+      { icon:'👥', label:'Manage Team', value:'→', iconBg:'var(--blue-d)', action: () => navigate('employees') },
+      { icon:'✅', label:'Approve Expenses', value:'→', iconBg:'var(--green-d)', action: () => navigate('reimbursements') },
+    ],
+    APE: [
+      { icon:'📊', label:'Review Expenses', value:'→', iconBg:'var(--teal-d)', action: () => navigate('reimbursements') },
+      { icon:'👁', label:'View All Users', value:'→', iconBg:'var(--purple-d)', action: () => navigate('employees') },
+    ],
+    CFO: [
+      { icon:'🎭', label:'Manage Roles', value:'→', iconBg:'var(--yellow-d)', action: () => navigate('users') },
+      { icon:'🔗', label:'Assign Employees', value:'→', iconBg:'var(--blue-d)', action: () => navigate('employees') },
+      { icon:'💼', label:'Final Approval', value:'→', iconBg:'var(--green-d)', action: () => navigate('reimbursements') },
+    ],
+  };
+
+  const stats = statConfigs[u.role] || [];
+  document.getElementById('stats-grid').innerHTML = stats.map(s => `
+    <div class="stat-card" style="cursor:${s.action?'pointer':'default'}" ${s.action ? `onclick="(${s.action})()"` : ''}>
+      <div class="stat-icon" style="background:${s.iconBg||'var(--surface-3)'}">${s.icon}</div>
+      <div class="stat-body">
+        <div class="stat-value">${s.value}</div>
+        <div class="stat-label">${s.label}</div>
+      </div>
+    </div>`).join('');
+
+  // Role guide
+  const guides = {
+    EMP: `As an <strong>Employee</strong>, you can submit reimbursement requests. Your request goes through:<br><br>
+      <strong>1.</strong> RM approval → <strong>2.</strong> APE approval → <strong>3.</strong> CFO visibility.<br><br>
+      Head to <em>Reimbursements</em> to submit a new request or check your status.`,
+    RM: `As a <strong>Reporting Manager</strong>, you approve or reject pending reimbursements from your direct reports.<br><br>
+      Approved requests move to the APE queue. Head to <em>Reimbursements</em> to action pending items.<br>
+      Use <em>Employees</em> to see your team.`,
+    APE: `As an <strong>Accounts Payable Executive</strong>, you see RM-approved reimbursements awaiting final payable approval.<br><br>
+      Once you approve, the CFO can see and take action. Visit <em>Reimbursements</em> to process them.`,
+    CFO: `As <strong>CFO</strong> you have full access:<br><br>
+      • <em>Users &amp; Roles</em> — assign EMP, RM, or APE roles.<br>
+      • <em>Employees</em> — link employees to their reporting managers.<br>
+      • <em>Reimbursements</em> — see APE-approved requests and give final approval or rejection.`,
+  };
+  document.getElementById('quick-guide-body').innerHTML = `<p style="font-size:14px;line-height:1.8;color:var(--text-dim)">${guides[u.role]||''}</p>`;
+}
+
+/* ─── Users & Roles (CFO) ────────────────────────────────────────────────── */
+async function loadUsers() {
+  document.getElementById('users-table-container').innerHTML =
+    '<div class="loading-row"><div class="spinner"></div> Loading users…</div>';
+  try {
+    const data = await api('GET', '/rest/employees');
+    const users = data.data?.users || [];
+    if (!users.length) {
+      document.getElementById('users-table-container').innerHTML = `<div class="empty-state"><div class="empty-state-icon">👤</div><p>No users found.</p></div>`;
+      return;
+    }
+    document.getElementById('users-table-container').innerHTML = `
+      <table>
+        <thead><tr><th>Name</th><th>Email</th><th>User ID</th><th>Current Role</th><th>Assign Role</th></tr></thead>
+        <tbody>${users.map(u => `
+          <tr>
+            <td><strong>${escHtml(u.name)}</strong></td>
+            <td style="color:var(--text-dim)">${escHtml(u.email)}</td>
+            <td class="id-cell">${u.userId}<span class="copy-id" onclick="copyId('${u.userId}')" title="Copy ID">📋</span></td>
+            <td>${roleBadge(u.role)}</td>
+            <td>
+              ${u.userId === state.user.id ? '<span style="color:var(--text-muted);font-size:12px">Your account</span>' : `
+              <div class="role-select-wrap">
+                <select id="role-sel-${u.userId}">
+                  <option value="EMP" ${u.role==='EMP'?'selected':''}>EMP</option>
+                  <option value="RM"  ${u.role==='RM'?'selected':''}>RM</option>
+                  <option value="APE" ${u.role==='APE'?'selected':''}>APE</option>
+                </select>
+                <button class="btn btn-xs btn-primary" onclick="handleAssignRole('${u.userId}')">Save</button>
+              </div>`}
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch (err) {
+    document.getElementById('users-table-container').innerHTML = `<div class="empty-state"><p>Error: ${escHtml(err.message)}</p></div>`;
+    toast(err.message, 'error');
+  }
+}
+
+async function handleAssignRole(userId) {
+  const sel = document.getElementById(`role-sel-${userId}`);
+  if (!sel) return;
+  const role = sel.value;
+  try {
+    await api('POST', '/rest/roles/assign', { userId, role });
+    toast(`Role updated to ${role} ✓`);
+    loadUsers();
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
+
+/* ─── Employees ──────────────────────────────────────────────────────────── */
+function setupEmployees() {
+  const role = state.user?.role;
+  const subtitleMap = {
+    CFO: 'Assign and remove employee–manager relationships across the organization.',
+    RM:  'View your direct reports.',
+    APE: 'View all employees and managers in the organization.',
+  };
+  document.getElementById('emp-section-subtitle').textContent = subtitleMap[role] || '';
+  document.getElementById('emp-list-title').textContent = role === 'RM' ? 'My Direct Reports' : 'All Team Members';
+  document.getElementById('assign-form-card').style.display  = role === 'CFO' ? '' : 'none';
+  document.getElementById('remove-form-card').style.display  = role === 'CFO' ? '' : 'none';
+  loadEmployees();
+}
+
+async function loadEmployees() {
+  document.getElementById('employees-table-container').innerHTML =
+    '<div class="loading-row"><div class="spinner"></div> Loading…</div>';
+  try {
+    const data = await api('GET', '/rest/employees');
+    const users = data.data?.users || [];
+    if (!users.length) {
+      document.getElementById('employees-table-container').innerHTML = `<div class="empty-state"><div class="empty-state-icon">👥</div><p>No team members found.</p></div>`;
+      return;
+    }
+    document.getElementById('employees-table-container').innerHTML = `
+      <table>
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>User ID</th></tr></thead>
+        <tbody>${users.map(u => `
+          <tr>
+            <td><strong>${escHtml(u.name)}</strong></td>
+            <td style="color:var(--text-dim)">${escHtml(u.email)}</td>
+            <td>${roleBadge(u.role)}</td>
+            <td class="id-cell">${u.userId}<span class="copy-id" onclick="copyId('${u.userId}')" title="Copy">📋</span></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch (err) {
+    document.getElementById('employees-table-container').innerHTML = `<div class="empty-state"><p>Error: ${escHtml(err.message)}</p></div>`;
+    toast(err.message, 'error');
+  }
+}
+
+async function handleAssignEmployee(e) {
+  e.preventDefault();
+  const userId    = document.getElementById('a-emp-id').value.trim();
+  const managerId = document.getElementById('a-mgr-id').value.trim();
+  try {
+    await api('POST', '/rest/employees/assign', { userId, managerId });
+    toast('Employee assigned to manager ✓');
+    document.getElementById('assign-form').reset();
+    loadEmployees();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function handleRemoveEmployee(e) {
+  e.preventDefault();
+  const employeeId = document.getElementById('r-emp-id').value.trim();
+  const managerId  = document.getElementById('r-mgr-id').value.trim();
+  try {
+    await api('DELETE', '/rest/employees/assign', { employeeId, managerId });
+    toast('Assignment removed ✓');
+    document.getElementById('remove-form').reset();
+    loadEmployees();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+/* ─── Reimbursements ─────────────────────────────────────────────────────── */
+function setupReimbursements() {
+  const role = state.user?.role;
+  const subtitleMap = {
+    EMP: 'Submit new requests and track your own reimbursements.',
+    RM:  'Review and action pending requests from your direct reports.',
+    APE: 'Process RM-approved reimbursements awaiting payable approval.',
+    CFO: 'See APE-approved reimbursements ready for final sign-off.',
+  };
+  const titleMap = {
+    EMP: 'My Reimbursements',
+    RM:  'Pending from My Team',
+    APE: 'Pending at APE Level',
+    CFO: 'Ready for CFO Approval',
+  };
+  document.getElementById('reimb-section-subtitle').textContent = subtitleMap[role] || '';
+  document.getElementById('reimb-list-title').textContent = titleMap[role] || 'Reimbursements';
+  document.getElementById('create-reimb-card').style.display   = role === 'EMP' ? '' : 'none';
+  document.getElementById('reimb-by-user-card').style.display  = (role === 'RM' || role === 'CFO') ? '' : 'none';
+  loadReimbursements();
+}
+
+async function loadReimbursements() {
+  document.getElementById('reimb-table-container').innerHTML =
+    '<div class="loading-row"><div class="spinner"></div> Loading…</div>';
+  try {
+    const data = await api('GET', '/rest/reimbursements');
+    renderReimbTable(data.data?.reimbursements || [], document.getElementById('reimb-table-container'));
+  } catch (err) {
+    document.getElementById('reimb-table-container').innerHTML = `<div class="empty-state"><p>Error: ${escHtml(err.message)}</p></div>`;
+    toast(err.message, 'error');
+  }
+}
+
+async function handleViewByUser(e) {
+  e.preventDefault();
+  const userId = document.getElementById('rbu-user-id').value.trim();
+  document.getElementById('reimb-table-container').innerHTML =
+    '<div class="loading-row"><div class="spinner"></div> Loading…</div>';
+  try {
+    const data = await api('GET', `/rest/reimbursements/${userId}`);
+    document.getElementById('reimb-list-title').textContent = 'Reimbursements for User';
+    renderReimbTable(data.data?.reimbursements || [], document.getElementById('reimb-table-container'));
+  } catch (err) {
+    document.getElementById('reimb-table-container').innerHTML = `<div class="empty-state"><p>Error: ${escHtml(err.message)}</p></div>`;
+    toast(err.message, 'error');
+  }
+}
+
+function renderReimbTable(items, container) {
+  const role = state.user?.role;
+  const canAction = ['RM','APE','CFO'].includes(role);
+  if (!items.length) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">💰</div><p>No reimbursements found for your current view.</p></div>`;
+    return;
+  }
+  container.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Title</th><th>Description</th><th>Amount</th><th>Status</th>
+          ${canAction ? '<th>Actions</th>' : ''}
+          <th>Reimbursement ID</th>
+        </tr>
+      </thead>
+      <tbody>${items.map(r => `
+        <tr>
+          <td><strong>${escHtml(r.title)}</strong></td>
+          <td style="max-width:200px;color:var(--text-dim)">${escHtml(r.description)}</td>
+          <td class="amount positive">₹${Number(r.amount).toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+          <td>${statusBadge(r.status)}</td>
+          ${canAction ? `<td>
+            <div class="action-btns">
+              ${r.status === 'PENDING' ? `
+                <button class="btn btn-xs btn-success" onclick="handleApprove('${r.id}')">✓ Approve</button>
+                <button class="btn btn-xs btn-danger"  onclick="handleReject('${r.id}')">✕ Reject</button>
+              ` : `<span style="font-size:12px;color:var(--text-muted)">Finalised</span>`}
+            </div>
+          </td>` : ''}
+          <td class="id-cell">${r.id}<span class="copy-id" onclick="copyId('${r.id}')" title="Copy">📋</span></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+async function handleCreateReimbursement(e) {
+  e.preventDefault();
+  const btn = e.submitter || e.target.querySelector('[type=submit]');
+  btn.disabled = true;
+  try {
+    await api('POST', '/rest/reimbursements', {
+      title: document.getElementById('r-title').value.trim(),
+      description: document.getElementById('r-desc').value.trim(),
+      amount: parseFloat(document.getElementById('r-amount').value),
+    });
+    toast('Reimbursement request submitted ✓');
+    document.getElementById('create-reimb-form').reset();
+    loadReimbursements();
+  } catch (err) { toast(err.message, 'error'); }
+  finally { btn.disabled = false; }
+}
+
+async function handleApprove(reimbId) {
+  try {
+    await api('PATCH', '/rest/reimbursements', { userId: reimbId, status: 'APPROVED' });
+    toast('Reimbursement approved ✓');
+    loadReimbursements();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function handleReject(reimbId) {
+  try {
+    await api('PATCH', '/rest/reimbursements', { userId: reimbId, status: 'REJECTED' });
+    toast('Reimbursement rejected.', 'info');
+    loadReimbursements();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+/* ─── Utils ──────────────────────────────────────────────────────────────── */
+function escHtml(str) {
+  return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ─── Check existing session on page load ────────────────────────────────── */
+(async () => {
+  try {
+    // Try to hit any protected endpoint – if cookie is valid we can auto-login
+    // We'll use a small trick: call /rest/employees and see if it succeeds.
+    // Actually the safest approach is to attempt login info from cookie.
+    // Since we can't read httpOnly cookies from JS, we'll just show auth screen.
+    // Nothing to do – show auth screen by default (already shown).
+  } catch {}
+})();
+</script>
+</body>
+</html>
