@@ -587,19 +587,6 @@ let state = {
 };
 
 /* ─── Session Restore on Page Load ──────────────────────────────────────── */
-async function restoreSession() {
-  try {
-    const data = await api('GET', '/rest/onboardings/me');
-    if (data.data) {
-      state.user = data.data;
-      enterApp(); // Load the app directly without showing auth screen
-    }
-  } catch (err) {
-    // Session invalid or expired — user stays on signin screen
-    // (auth-screen is already visible by default)
-  }
-}
-
 function showLoading() {
   document.body.classList.add('loading');
 }
@@ -609,12 +596,46 @@ function hideLoading() {
 }
 
 async function restoreSession() {
+  const cached = localStorage.getItem('user_session');
+
+  if (cached) {
+    try {
+      const cachedUser = JSON.parse(cached);
+      if (cachedUser && cachedUser.id) {
+        state.user = cachedUser;
+        enterApp();
+
+        try {
+          const data = await api('GET', '/rest/onboardings/me');
+          if (data.data) {
+            state.user = data.data;
+            localStorage.setItem('user_session', JSON.stringify(data.data));
+            updateSidebar();
+            updateNavVisibility();
+            if (state.currentView === 'dashboard') {
+              renderDashboard();
+            }
+          }
+        } catch (err) {
+          localStorage.removeItem('user_session');
+          state.user = null;
+          document.getElementById('app-screen').style.display = 'none';
+          document.getElementById('auth-screen').style.display = 'flex';
+        }
+        return;
+      }
+    } catch (err) {
+      localStorage.removeItem('user_session');
+    }
+  }
+
   showLoading();
   try {
     const data = await api('GET', '/rest/onboardings/me');
     if (data.data) {
       state.user = data.data;
-      enterApp(); // Load the app directly without showing auth screen
+      localStorage.setItem('user_session', JSON.stringify(data.data));
+      enterApp();
     }
   } catch (err) {
     // Session invalid or expired — user stays on signin screen
@@ -711,6 +732,7 @@ async function handleLogin(e) {
       password: document.getElementById('login-password').value,
     });
     state.user = data.data;
+    localStorage.setItem('user_session', JSON.stringify(data.data));
     toast(`Welcome back, ${state.user.name}!`);
     enterApp();
   } catch (err) {
@@ -745,6 +767,7 @@ async function handleLogout() {
   try {
     await api('POST', '/rest/onboardings/logout');
   } catch {}
+  localStorage.removeItem('user_session');
   state.user = null;
   document.getElementById('app-screen').style.display = 'none';
   document.getElementById('auth-screen').style.display = 'flex';
