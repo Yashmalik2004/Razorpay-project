@@ -56,6 +56,21 @@
                   radial-gradient(ellipse 60% 50% at 80% 100%, rgba(59,130,246,0.08) 0%, transparent 60%),
                   var(--bg);
     }
+
+    #loading-screen {
+      height: 100vh; display: none; align-items: center; justify-content: center;
+      background: var(--bg); color: var(--text);
+      font-size: 16px; letter-spacing: 0.02em;
+    }
+
+    body.loading #auth-screen,
+    body.loading #app-screen {
+      display: none !important;
+    }
+
+    body.loading #loading-screen {
+      display: flex !important;
+    }
     .auth-wrap {
       width: 420px; max-width: 95vw;
       background: var(--surface); border: 1px solid var(--border);
@@ -301,6 +316,7 @@
 <!-- ═══════════════════════════════════════════════════════════════════════════
      AUTH SCREEN
 ═══════════════════════════════════════════════════════════════════════════ -->
+<div id="loading-screen">Restoring session…</div>
 <div id="auth-screen">
   <div class="auth-wrap">
     <div class="auth-logo">
@@ -581,6 +597,29 @@ async function restoreSession() {
   } catch (err) {
     // Session invalid or expired — user stays on signin screen
     // (auth-screen is already visible by default)
+  }
+}
+
+function showLoading() {
+  document.body.classList.add('loading');
+}
+
+function hideLoading() {
+  document.body.classList.remove('loading');
+}
+
+async function restoreSession() {
+  showLoading();
+  try {
+    const data = await api('GET', '/rest/onboardings/me');
+    if (data.data) {
+      state.user = data.data;
+      enterApp(); // Load the app directly without showing auth screen
+    }
+  } catch (err) {
+    // Session invalid or expired — user stays on signin screen
+  } finally {
+    hideLoading();
   }
 }
 
